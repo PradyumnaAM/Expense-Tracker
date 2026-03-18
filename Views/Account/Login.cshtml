@@ -13,7 +13,10 @@
         <form asp-action="Login" method="post">
             @Html.AntiForgeryToken()
             <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
-            <div asp-validation-summary="All" class="validation-summary"></div>
+            @if (!ViewData.ModelState.IsValid && ViewData.ModelState.ErrorCount > 0)
+{
+    <div asp-validation-summary="All" class="validation-summary"></div>
+}
 
             <div class="form-group">
                 <label asp-for="Email" class="form-label">Email</label>
