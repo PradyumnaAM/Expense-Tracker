@@ -381,6 +381,9 @@ html, body {
 
 .field-error { font-size: 12px; color: var(--red); }
 .validation-summary { background: var(--red-dim); border: 1px solid rgba(249,112,102,.3); border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; color: var(--red); margin-bottom: 16px; }
+.validation-summary:empty { display: none; }
+.validation-summary ul:empty { display: none; }
+.validation-summary:has(ul:empty) { display: none; }
 .validation-summary ul { padding-left: 16px; }
 
 /* ── Filters ────────────────────────────── */
