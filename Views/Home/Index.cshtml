@@ -1,0 +1,158 @@
+@model DashboardViewModel
+@{
+    ViewData["Title"] = "Dashboard";
+    var greeting = DateTime.Now.Hour < 12 ? "Good morning" : DateTime.Now.Hour < 17 ? "Good afternoon" : "Good evening";
+    var maxBar = Model.Last6Months.Any() ? Model.Last6Months.Max(m => m.Total) : 1;
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-greeting">@greeting, <strong>@Model.UserDisplayName.Split(' ')[0]</strong> 👋</h1>
+        <p class="page-sub">Here's your financial snapshot for @DateTime.Now.ToString("MMMM yyyy")</p>
+    </div>
+    <span class="date-badge">@DateTime.Now.ToString("MMMM yyyy")</span>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card featured">
+        <div class="stat-label">Total Spent</div>
+        <div class="stat-value">$@Model.TotalSpentThisMonth.ToString("N2")</div>
+        @if (Model.ChangeVsLastMonth != 0)
+        {
+            var dir = Model.ChangeVsLastMonth > 0 ? "up" : "down";
+            var prefix = Model.ChangeVsLastMonth > 0 ? "↑" : "↓";
+            <div class="stat-change @dir">@prefix @Math.Abs(Model.ChangeVsLastMonth)% vs last month</div>
+        }
+        else
+        {
+            <div class="stat-change neutral">First month tracked</div>
+        }
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Budget Remaining</div>
+        <div class="stat-value @(Model.BudgetRemaining < 0 ? "danger" : "success")">$@Model.BudgetRemaining.ToString("N2")</div>
+        <div class="budget-bar-wrap">
+            <div class="budget-bar">
+                <div class="budget-bar-fill @(Model.PercentBudgetUsed > 90 ? "danger" : Model.PercentBudgetUsed > 70 ? "warn" : "")"
+                     style="width:@Model.PercentBudgetUsed%"></div>
+            </div>
+            <span class="stat-change neutral">@Model.PercentBudgetUsed.ToString("N0")% of $@Model.MonthlyBudget.ToString("N0")</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Income This Month</div>
+        <div class="stat-value success">$@Model.TotalIncomeThisMonth.ToString("N2")</div>
+        <div class="stat-change neutral">@Model.TransactionCount transactions total</div>
+    </div>
+</div>
+
+<div class="row2">
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Monthly Spending</span>
+            <span class="pill">Last 6 months</span>
+        </div>
+        <div class="bar-chart">
+            @foreach (var m in Model.Last6Months)
+            {
+                var pct = maxBar > 0 ? (double)m.Total / (double)maxBar * 100 : 0;
+                <div class="bar-col">
+                    <span class="bar-amount">$@((m.Total / 1000m).ToString("N1"))k</span>
+                    <div class="bar @(m.IsCurrent ? "current" : "")" style="height:@(Math.Max(4, pct))%"></div>
+                    <span class="bar-label">@m.MonthLabel</span>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">By Category</span>
+        </div>
+        @if (Model.CategoryBreakdown.Any())
+        {
+            <div class="category-list">
+                @foreach (var cat in Model.CategoryBreakdown.Take(5))
+                {
+                    <div class="cat-row">
+                        <span class="cat-name">@cat.Category</span>
+                        <div class="cat-bar-wrap">
+                            <div class="cat-bar" style="width:@cat.Percentage%"></div>
+                        </div>
+                        <span class="cat-pct">@cat.Percentage%</span>
+                        <span class="cat-amt">$@cat.Total.ToString("N0")</span>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="empty-state">No expenses this month yet.</p>
+        }
+    </div>
+</div>
+
+<div class="row2">
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Recent Transactions</span>
+            <a href="@Url.Action("Index","Expenses")" class="card-link">View all →</a>
+        </div>
+        @if (Model.RecentTransactions.Any())
+        {
+            <div class="txn-list">
+                @foreach (var t in Model.RecentTransactions)
+                {
+                    <div class="txn-row">
+                        <div class="txn-icon cat-@t.Category.ToString().ToLower()">
+                            @GetCategoryEmoji(t.Category)
+                        </div>
+                        <div class="txn-info">
+                            <span class="txn-name">@t.Description</span>
+                            <span class="txn-meta">@t.Category · @t.Date.ToString("MMM d")</span>
+                        </div>
+                        <span class="txn-amt @(t.Type == ExpenseType.Income ? "income" : "expense")">
+                            @(t.Type == ExpenseType.Income ? "+" : "-")$@t.Amount.ToString("N2")
+                        </span>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="empty-state">No transactions yet. <a href="@Url.Action("Create","Expenses")">Add one →</a></p>
+        }
+    </div>
+
+    <div class="card report-cta">
+        <div class="card-header">
+            <span class="card-title">Monthly Report</span>
+        </div>
+        <p class="report-desc">Get a full PDF breakdown of your @DateTime.Now.ToString("MMMM") spending, categorized and ready to share.</p>
+        <ul class="report-features">
+            <li>✦ Category breakdown</li>
+            <li>✦ Trend vs last month</li>
+            <li>✦ All transactions listed</li>
+            <li>✦ Net savings summary</li>
+        </ul>
+        <a href="@Url.Action("Index","Reports")" class="btn btn-primary btn-full">View Report</a>
+        <a href="@Url.Action("Download","Reports", new { month = DateTime.Now.Month, year = DateTime.Now.Year })" class="btn btn-ghost btn-full" style="margin-top:8px">Download PDF ↓</a>
+    </div>
+</div>
+
+@functions {
+    string GetCategoryEmoji(ExpenseCategory cat) => cat switch
+    {
+        ExpenseCategory.Housing => "🏠",
+        ExpenseCategory.Food => "🛒",
+        ExpenseCategory.Transport => "🚗",
+        ExpenseCategory.Healthcare => "💊",
+        ExpenseCategory.Entertainment => "🎬",
+        ExpenseCategory.Shopping => "🛍️",
+        ExpenseCategory.Utilities => "⚡",
+        ExpenseCategory.Education => "📚",
+        ExpenseCategory.Savings => "💰",
+        ExpenseCategory.Income => "💼",
+        _ => "📌"
+    };
+}

@@ -1,0 +1,35 @@
+@model SettingsViewModel
+@{
+    ViewData["Title"] = "Settings";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Settings</h1>
+        <p class="page-sub">Manage your account preferences</p>
+    </div>
+</div>
+
+<div class="card form-card">
+    <form asp-action="Settings" method="post">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="All" class="validation-summary"></div>
+
+        <div class="form-group">
+            <label asp-for="DisplayName" class="form-label">Display Name</label>
+            <input asp-for="DisplayName" class="form-input" placeholder="Your name" />
+            <span asp-validation-for="DisplayName" class="field-error"></span>
+        </div>
+
+        <div class="form-group">
+            <label asp-for="MonthlyBudget" class="form-label">Monthly Budget ($)</label>
+            <input asp-for="MonthlyBudget" class="form-input" type="number" step="50" min="1" />
+            <span asp-validation-for="MonthlyBudget" class="field-error"></span>
+            <p class="form-hint">This is used to calculate your budget remaining on the dashboard.</p>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Settings</button>
+        </div>
+    </form>
+</div>

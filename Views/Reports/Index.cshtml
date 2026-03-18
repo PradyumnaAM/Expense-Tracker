@@ -1,0 +1,178 @@
+@model ReportViewModel
+@{
+    ViewData["Title"] = "Reports";
+    var months = Enumerable.Range(1, 12).Select(m => new { Value = m, Name = new DateTime(2000, m, 1).ToString("MMMM") });
+    var years = Enumerable.Range(DateTime.Now.Year - 3, 5).Reverse();
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Monthly Report</h1>
+        <p class="page-sub">@Model.MonthName</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+        <form method="get" class="filter-row" style="margin:0">
+            <select name="month" class="filter-select">
+                @foreach (var m in months)
+                {
+                    if (m.Value == Model.Month)
+                    {
+                        <option value="@m.Value" selected="selected">@m.Name</option>
+                    }
+                    else
+                    {
+                        <option value="@m.Value">@m.Name</option>
+                    }
+                }
+            </select>
+            <select name="year" class="filter-select">
+                @foreach (var y in years)
+                {
+                    if (y == Model.Year)
+                    {
+                        <option value="@y" selected="selected">@y</option>
+                    }
+                    else
+                    {
+                        <option value="@y">@y</option>
+                    }
+                }
+            </select>
+            <button type="submit" class="btn btn-ghost">View</button>
+        </form>
+        <a href="@Url.Action("Download", new { month = Model.Month, year = Model.Year })" class="btn btn-primary">Download PDF ↓</a>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card featured">
+        <div class="stat-label">Total Spent</div>
+        <div class="stat-value">$@Model.TotalSpent.ToString("N2")</div>
+        @if (Model.PreviousMonthSpent > 0)
+        {
+            var prefix = Model.ChangePercent >= 0 ? "↑ +" : "↓ ";
+            var cls = Model.ChangePercent > 0 ? "up" : "down";
+            <div class="stat-change @cls">@prefix@Math.Abs(Model.ChangePercent).ToString("N1")% vs previous month</div>
+        }
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Total Income</div>
+        <div class="stat-value success">$@Model.TotalIncome.ToString("N2")</div>
+        <div class="stat-change neutral">@Model.AllExpenses.Count(e => e.Type == ExpenseType.Income) income entries</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-label">Net Savings</div>
+        <div class="stat-value @(Model.NetSavings >= 0 ? "success" : "danger")">$@Model.NetSavings.ToString("N2")</div>
+        <div class="stat-change neutral">@Model.AllExpenses.Count total transactions</div>
+    </div>
+</div>
+
+<div class="row2">
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Spending by Category</span>
+        </div>
+        @if (Model.ByCategory.Any())
+        {
+            <div class="category-list">
+                @foreach (var cat in Model.ByCategory)
+                {
+                    <div class="cat-row">
+                        <span class="cat-name">@cat.Category</span>
+                        <div class="cat-bar-wrap">
+                            <div class="cat-bar" style="width:@cat.Percentage%"></div>
+                        </div>
+                        <span class="cat-pct">@cat.Percentage%</span>
+                        <span class="cat-amt">$@cat.Total.ToString("N2")</span>
+                    </div>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="empty-state">No expense data for this period.</p>
+        }
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Summary</span>
+        </div>
+        <div class="summary-rows">
+            <div class="summary-row">
+                <span>Total transactions</span>
+                <strong>@Model.AllExpenses.Count</strong>
+            </div>
+            <div class="summary-row">
+                <span>Expense entries</span>
+                <strong>@Model.AllExpenses.Count(e => e.Type == ExpenseType.Expense)</strong>
+            </div>
+            <div class="summary-row">
+                <span>Income entries</span>
+                <strong>@Model.AllExpenses.Count(e => e.Type == ExpenseType.Income)</strong>
+            </div>
+            <div class="summary-row">
+                <span>Largest single expense</span>
+                <strong>$@(Model.AllExpenses.Where(e=>e.Type==ExpenseType.Expense).Select(e=>e.Amount).DefaultIfEmpty(0).Max().ToString("N2"))</strong>
+            </div>
+            <div class="summary-row">
+                <span>Average expense</span>
+                @{
+                    var expList = Model.AllExpenses.Where(e => e.Type == ExpenseType.Expense).ToList();
+                    var avg = expList.Any() ? expList.Average(e => e.Amount) : 0;
+                }
+                <strong>$@avg.ToString("N2")</strong>
+            </div>
+            <div class="summary-row border-top">
+                <span><strong>Net savings</strong></span>
+                <strong class="@(Model.NetSavings >= 0 ? "text-success" : "text-danger")">$@Model.NetSavings.ToString("N2")</strong>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <span class="card-title">All Transactions — @Model.MonthName</span>
+    </div>
+    @if (Model.AllExpenses.Any())
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Type</th>
+                        <th class="text-right">Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in Model.AllExpenses)
+                    {
+                        <tr>
+                            <td class="text-muted">@e.Date.ToString("MMM d")</td>
+                            <td>@e.Description</td>
+                            <td><span class="badge badge-cat">@e.Category</span></td>
+                            <td><span class="badge @(e.Type == ExpenseType.Income ? "badge-income" : "badge-expense")">@e.Type</span></td>
+                            <td class="text-right @(e.Type == ExpenseType.Income ? "text-success" : "text-danger")">
+                                @(e.Type == ExpenseType.Income ? "+" : "-")$@e.Amount.ToString("N2")
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot>
+                    <tr class="table-footer">
+                        <td colspan="4"><strong>Total Spent</strong></td>
+                        <td class="text-right text-danger"><strong>-$@Model.TotalSpent.ToString("N2")</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    }
+    else
+    {
+        <p class="empty-state">No transactions for this period.</p>
+    }
+</div>

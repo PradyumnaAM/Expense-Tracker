@@ -1,0 +1,124 @@
+@model ExpenseFilterViewModel
+@{
+    ViewData["Title"] = "Transactions";
+}
+
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Transactions</h1>
+        <p class="page-sub">@Model.TotalCount total records</p>
+    </div>
+    <a href="@Url.Action("Create")" class="btn btn-primary">+ Add Transaction</a>
+</div>
+
+<div class="card" style="margin-bottom:16px">
+    <form method="get" class="filter-row">
+        <input type="text" name="search" value="@Model.Search" placeholder="Search descriptions…" class="filter-input" />
+        <select name="category" class="filter-select">
+            <option value="">All Categories</option>
+            @foreach (var cat in Enum.GetValues<ExpenseCategory>())
+            {
+                if (Model.Category == cat)
+                {
+                    <option value="@cat" selected="selected">@cat</option>
+                }
+                else
+                {
+                    <option value="@cat">@cat</option>
+                }
+            }
+        </select>
+        <select name="type" class="filter-select">
+            <option value="">All Types</option>
+            @if (Model.Type == ExpenseType.Expense)
+            {
+                <option value="Expense" selected="selected">Expense</option>
+                <option value="Income">Income</option>
+            }
+            else if (Model.Type == ExpenseType.Income)
+            {
+                <option value="Expense">Expense</option>
+                <option value="Income" selected="selected">Income</option>
+            }
+            else
+            {
+                <option value="Expense">Expense</option>
+                <option value="Income">Income</option>
+            }
+        </select>
+        <input type="date" name="from" value="@Model.From?.ToString("yyyy-MM-dd")" class="filter-input" placeholder="From" />
+        <input type="date" name="to" value="@Model.To?.ToString("yyyy-MM-dd")" class="filter-input" placeholder="To" />
+        <button type="submit" class="btn btn-primary">Filter</button>
+        <a href="@Url.Action("Index")" class="btn btn-ghost">Clear</a>
+    </form>
+</div>
+
+<div class="card">
+    @if (Model.Expenses.Any())
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Description</th>
+                        <th>Category</th>
+                        <th>Type</th>
+                        <th class="text-right">Amount</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var e in Model.Expenses)
+                    {
+                        <tr>
+                            <td class="text-muted">@e.Date.ToString("MMM d, yyyy")</td>
+                            <td>
+                                <span class="txn-desc">@e.Description</span>
+                                @if (e.IsRecurring)
+                                {
+                                    <span class="badge badge-recurring">recurring</span>
+                                }
+                                @if (!string.IsNullOrEmpty(e.Notes))
+                                {
+                                    <span class="notes-icon" title="@e.Notes">📝</span>
+                                }
+                            </td>
+                            <td><span class="badge badge-cat">@e.Category</span></td>
+                            <td><span class="badge @(e.Type == ExpenseType.Income ? "badge-income" : "badge-expense")">@e.Type</span></td>
+                            <td class="text-right @(e.Type == ExpenseType.Income ? "text-success" : "text-danger")">
+                                @(e.Type == ExpenseType.Income ? "+" : "-")$@e.Amount.ToString("N2")
+                            </td>
+                            <td class="action-cell">
+                                <a href="@Url.Action("Edit", new { id = e.Id })" class="action-btn">Edit</a>
+                                <form method="post" action="@Url.Action("Delete", new { id = e.Id })" style="display:inline"
+                                      onsubmit="return confirm('Delete this transaction?')">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="action-btn danger">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (Model.TotalPages > 1)
+        {
+            <div class="pagination">
+                @for (int i = 1; i <= Model.TotalPages; i++)
+                {
+                    <a href="?page=@i&search=@Model.Search&category=@Model.Category&type=@Model.Type&from=@Model.From?.ToString("yyyy-MM-dd")&to=@Model.To?.ToString("yyyy-MM-dd")"
+                       class="page-btn @(i == Model.Page ? "active" : "")">@i</a>
+                }
+            </div>
+        }
+    }
+    else
+    {
+        <div class="empty-block">
+            <p>No transactions found.</p>
+            <a href="@Url.Action("Create")" class="btn btn-primary">Add your first transaction</a>
+        </div>
+    }
+</div>
